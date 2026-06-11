@@ -1070,13 +1070,15 @@ To start the scylla server proper, simply invoke as: scylla server (or just scyl
                 smp::invoke_on_all([] { engine().set_strict_dma(false); }).get();
             }
 
-            auto abort_on_internal_error_observer = cfg->abort_on_internal_error.observe([] (bool val) {
+            auto abort_on_internal_error_observer = cfg->abort_on_internal_error.observe([] (bool val) -> future<> {
                 set_abort_on_internal_error(val);
+                return make_ready_future<>();
             });
             set_abort_on_internal_error(cfg->abort_on_internal_error());
 
-            auto abort_on_malformed_sstable_error_observer = cfg->abort_on_malformed_sstable_error.observe([] (bool val) {
+            auto abort_on_malformed_sstable_error_observer = cfg->abort_on_malformed_sstable_error.observe([] (bool val) -> future<> {
                 sstables::set_abort_on_malformed_sstable_error(val);
+                return make_ready_future<>();
             });
             sstables::set_abort_on_malformed_sstable_error(cfg->abort_on_malformed_sstable_error());
 
@@ -1740,8 +1742,9 @@ To start the scylla server proper, simply invoke as: scylla server (or just scyl
             auto stop_tsm = defer_verbose_shutdown("topology_state_machine", [&tsm] {
                 tsm.stop().get();
             });
-            auto notify_topology = [&tsm] (auto) {
+            auto notify_topology = [&tsm] (auto) -> future<> {
                 tsm.local().event.broadcast();
+                return make_ready_future<>();
             };
             auto tablets_per_shard_goal_observer = cfg->tablets_per_shard_goal.observe(notify_topology);
             auto tablets_initial_scale_factor_observer = cfg->tablets_initial_scale_factor.observe(notify_topology);

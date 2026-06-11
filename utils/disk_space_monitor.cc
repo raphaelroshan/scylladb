@@ -59,8 +59,9 @@ disk_space_monitor::disk_space_monitor(abort_source& as, std::filesystem::path d
     _space_source = [this] {
         return engine().file_system_space(_data_dir.native());
     };
-    _capacity_observer = make_lw_shared(_cfg.capacity_override.observe([this] (auto) {
+    _capacity_observer = make_lw_shared(_cfg.capacity_override.observe([this] (auto) -> seastar::future<> {
         trigger_poll();
+        return seastar::make_ready_future<>();
     }));
 }
 

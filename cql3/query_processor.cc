@@ -88,13 +88,13 @@ query_processor::query_processor(service::storage_proxy& proxy, data_dictionary:
         , _cql_config(cql_cfg)
         , _prepared_cache(prep_cache_log, _mcfg.prepared_statment_cache_size)
         , _authorized_prepared_cache(std::move(auth_prep_cache_cfg), authorized_prepared_statements_cache_log)
-        , _auth_prepared_cache_cfg_cb([this] (uint32_t) { (void) _authorized_prepared_cache_config_action.trigger_later(); })
+        , _auth_prepared_cache_cfg_cb([this] (uint32_t) -> future<> { return _authorized_prepared_cache_config_action.trigger_later(); })
         , _authorized_prepared_cache_config_action([this] { update_authorized_prepared_cache_config(); return make_ready_future<>(); })
         , _authorized_prepared_cache_update_interval_in_ms_observer(_db.get_config().permissions_update_interval_in_ms.observe(_auth_prepared_cache_cfg_cb))
         , _authorized_prepared_cache_validity_in_ms_observer(_db.get_config().permissions_validity_in_ms.observe(_auth_prepared_cache_cfg_cb))
         , _lang_manager(langm)
-        , _write_consistency_levels_warned_observer(_db.get_config().write_consistency_levels_warned.observe([this](const auto& v) { _write_consistency_levels_warned = to_consistency_level_set(v); }))
-        , _write_consistency_levels_disallowed_observer(_db.get_config().write_consistency_levels_disallowed.observe([this](const auto& v) { _write_consistency_levels_disallowed = to_consistency_level_set(v); }))
+        , _write_consistency_levels_warned_observer(_db.get_config().write_consistency_levels_warned.observe([this](const auto& v) -> future<> { _write_consistency_levels_warned = to_consistency_level_set(v); return make_ready_future<>(); }))
+        , _write_consistency_levels_disallowed_observer(_db.get_config().write_consistency_levels_disallowed.observe([this](const auto& v) -> future<> { _write_consistency_levels_disallowed = to_consistency_level_set(v); return make_ready_future<>(); }))
         {
     _write_consistency_levels_warned = to_consistency_level_set(_db.get_config().write_consistency_levels_warned());
     _write_consistency_levels_disallowed = to_consistency_level_set(_db.get_config().write_consistency_levels_disallowed());

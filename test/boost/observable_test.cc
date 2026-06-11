@@ -19,21 +19,21 @@ using namespace utils;
 BOOST_AUTO_TEST_CASE(test_basic_functionality) {
     observable<int> pub;
     int v1 = 0, v2 = 0;
-    observer<int> sub1 = pub.observe([&] (int x) { v1 = x; });
-    observer<int> sub2 = pub.observe([&] (int x) { v2 = x; });
-    pub(7);
+    observer<int> sub1 = pub.observe([&] (int x) -> seastar::future<> { v1 = x; return seastar::make_ready_future<>(); });
+    observer<int> sub2 = pub.observe([&] (int x) -> seastar::future<> { v2 = x; return seastar::make_ready_future<>(); });
+    pub(7).get();
     BOOST_REQUIRE_EQUAL(v1, 7);
     BOOST_REQUIRE_EQUAL(v2, 7);
     sub1.disconnect();
-    pub(3);
+    pub(3).get();
     BOOST_REQUIRE_EQUAL(v1, 7);
     BOOST_REQUIRE_EQUAL(v2, 3);
     sub1 = std::move(sub2);
-    pub(4);
+    pub(4).get();
     BOOST_REQUIRE_EQUAL(v1, 7);
     BOOST_REQUIRE_EQUAL(v2, 4);
     pub = observable<int>();
-    pub(5);
+    pub(5).get();
     BOOST_REQUIRE_EQUAL(v1, 7);
     BOOST_REQUIRE_EQUAL(v2, 4);
 }
@@ -41,14 +41,14 @@ BOOST_AUTO_TEST_CASE(test_basic_functionality) {
 BOOST_AUTO_TEST_CASE(test_exceptions) {
     observable<> pub;
     bool saw1 = false;
-    observer<> sub1 = pub.observe([&] { saw1 = true; });
-    observer<> sub2 = pub.observe([&] { throw 2; });
+    observer<> sub1 = pub.observe([&] () -> seastar::future<> { saw1 = true; return seastar::make_ready_future<>(); });
+    observer<> sub2 = pub.observe([&] () -> seastar::future<> { throw 2; });
     bool saw3 = false;
-    observer<> sub3 = pub.observe([&] { saw3 = true; });
-    observer<> sub4 = pub.observe([&] { throw 4; });
+    observer<> sub3 = pub.observe([&] () -> seastar::future<> { saw3 = true; return seastar::make_ready_future<>(); });
+    observer<> sub4 = pub.observe([&] () -> seastar::future<> { throw 4; });
     bool caught = false;
     try {
-        pub();
+        pub().get();
     } catch (int v) {
         BOOST_REQUIRE(saw1);
         BOOST_REQUIRE(saw3);
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(test_exceptions) {
 
 BOOST_AUTO_TEST_CASE(test_disconnect_fully_disconnects) {
     std::variant<observable<>, std::array<char, 100>> pub = observable<>();
-    observer<> sub = std::get<observable<>>(pub).observe([] {});
+    observer<> sub = std::get<observable<>>(pub).observe([] () -> seastar::future<> { return seastar::make_ready_future<>(); });
     sub.disconnect();
     auto x = std::array<char, 100>{};
     std::iota(x.begin(), x.end(), 'X');

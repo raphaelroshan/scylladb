@@ -75,7 +75,7 @@ public:
     const T& operator()() const { return _value; }
     operator const T& () const { return _value; }
     const T& get() const { return _value; }
-    observer<T> observe(std::function<void (const T&)> callback) const;
+    observer<T> observe(std::function<seastar::future<> (const T&)> callback) const;
 
     friend class updateable_value_source_base;
     template <typename U>
@@ -136,7 +136,14 @@ public:
         for_each_ref([&] (updateable_value<T>* ref) {
             ref->_value = _value;
         });
-        _updater(_value);
+        // Observers registered through updateable_value_source are expected
+        // to be synchronous (return ready futures). The serialized_action
+        // adaptor runs its action in the background and returns a ready future
+        // for the trigger. We discard the future here because:
+        // 1. The config update path is synchronous by design
+        // 2. Async observers use serialized_action which handles its own
+        //    background work and shutdown synchronization via join()
+        (void)_updater(_value);
     }
     const T& get() const {
         return _value;
@@ -147,7 +154,7 @@ public:
     observable<T>& as_observable() const {
         return _updater;
     }
-    observer<T> observe(std::function<void (const T&)> callback) const {
+    observer<T> observe(std::function<seastar::future<> (const T&)> callback) const {
         return _updater.observe(std::move(callback));
     }
 
@@ -206,7 +213,7 @@ updateable_value<T>::source() const {
 
 template <typename T>
 [[nodiscard]] observer<T>
-updateable_value<T>::observe(std::function<void (const T&)> callback) const {
+updateable_value<T>::observe(std::function<seastar::future<> (const T&)> callback) const {
     auto* src = source();
     return src ? src->observe(std::move(callback)) : dummy_observer<T>();
 }

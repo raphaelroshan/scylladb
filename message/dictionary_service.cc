@@ -21,14 +21,16 @@ dictionary_service::dictionary_service(
     , _raft_group0_client(raft_group0_client)
     , _as(as)
     , _training_fiber_future(make_ready_future<>())
-    , _leadership_observer(raft_group0.observe_leadership([this] (bool leader) {
+    , _leadership_observer(raft_group0.observe_leadership([this] (bool leader) -> seastar::future<> {
         netw::dict_trainer_logger.debug("dictionary_service: _leadership_observer triggered");
         _is_leader = leader;
         maybe_toggle_dict_training();
+        return seastar::make_ready_future<>();
     }))
-    , _when_observer(_rpc_dict_training_when.observe([this] (const auto&) {
+    , _when_observer(_rpc_dict_training_when.observe([this] (const auto&) -> seastar::future<> {
         netw::dict_trainer_logger.debug("dictionary_service: _when_observer triggered");
         maybe_toggle_dict_training();
+        return seastar::make_ready_future<>();
     }))
     , _feature_observer(fs.compression_dicts.when_enabled([
         rpc_dict_training_min_time_seconds = std::move(cfg.rpc_dict_training_min_time_seconds),

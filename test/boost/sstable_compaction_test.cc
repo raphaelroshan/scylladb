@@ -4114,9 +4114,10 @@ void sstable_run_based_compaction_fn(test_env& env) {
 
         do_replace(old_sstables, new_sstables);
 
-        observers.push_back(old_sstable->add_on_closed_handler([&] (sstable& sst) {
+        observers.push_back(old_sstable->add_on_closed_handler([&] (sstable& sst) -> seastar::future<> {
             testlog.info("Closing sstable of generation {}", sst.generation());
             closed_sstables_tracker++;
+            return seastar::make_ready_future<>();
         }));
 
         testlog.info("Removing sstable of generation {}, refcnt: {}", old_sstable->generation(), old_sstable.use_count());
@@ -6844,7 +6845,7 @@ static future<> run_incremental_compaction_test(sstables::offstrategy offstrateg
             for (auto&& sst : ssts) {
                 t->add_sstable_and_update_cache(sst, offstrategy).get();
                 testlog.info("run id {}, refcount = {}", sst->run_identifier(), sst.use_count());
-                observers.push_back(sst->add_on_closed_handler([&] (sstable& sst) mutable {
+                observers.push_back(sst->add_on_closed_handler([&] (sstable& sst) mutable -> seastar::future<> {
                     auto sstables = t->get_sstables();
                     auto input_sstable_count = std::count_if(sstables->begin(), sstables->end(), [&] (const shared_sstable& sst) {
                         return gens.count(sst->generation());
@@ -6856,6 +6857,7 @@ static future<> run_incremental_compaction_test(sstables::offstrategy offstrateg
                         sstables_closed_during_cleanup++;
                         last_input_sstable_count = input_sstable_count;
                     }
+                    return seastar::make_ready_future<>();
                 }));
             }
             ssts = {}; // releases references
@@ -6997,16 +6999,18 @@ void cleanup_during_offstrategy_incremental_compaction_fn(test_env& env) {
         for (auto&& sst : ssts) {
             testlog.info("run id {}", sst->run_identifier());
             column_family_test(t).add_sstable(sst, sstables::offstrategy::yes).get();
-            observers.push_back(sst->add_on_closed_handler([&] (sstable& sst) mutable {
+            observers.push_back(sst->add_on_closed_handler([&] (sstable& sst) mutable -> seastar::future<> {
                 auto sstables = t->get_sstables();
                 testlog.info("Closing sstable of generation {}, table set size: {}", sst.generation(), sstables->size());
                 sstables_closed++;
+                return seastar::make_ready_future<>();
             }));
-                observers.push_back(sst->add_on_delete_handler([&] (sstable& sst) mutable {
+                observers.push_back(sst->add_on_delete_handler([&] (sstable& sst) mutable -> seastar::future<> {
                 // ATTN -- the _on_delete callback is not necessarily running in thread
                     auto missing = (::access(fmt::to_string(sst.get_filename()).c_str(), F_OK) != 0);
                     testlog.info("Deleting sstable of generation {}: missing={}", sst.generation(), missing);
                     sstables_missing_on_delete += missing;
+                    return seastar::make_ready_future<>();
             }));
         }
         ssts = {}; // releases references

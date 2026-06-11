@@ -206,9 +206,9 @@ audit::audit(locator::shared_token_metadata& token_metadata,
     , _schema_listener(std::make_unique<audit_schema_listener>(_preprocessed_rules))
     , _migration_notifier(mm.get_notifier())
     , _cfg(cfg)
-    , _cfg_keyspaces_observer(cfg.audit_keyspaces.observe([this] (sstring const& new_value){ update_config<audited_keyspaces_t>(new_value, parse_audit_keyspaces, _audited_keyspaces); }))
-    , _cfg_tables_observer(cfg.audit_tables.observe([this] (sstring const& new_value){ update_config<audited_tables_t>(new_value, parse_audit_tables, _audited_tables); }))
-    , _cfg_categories_observer(cfg.audit_categories.observe([this] (sstring const& new_value){ update_config<category_set>(new_value, parse_audit_categories, _audited_categories); }))
+    , _cfg_keyspaces_observer(cfg.audit_keyspaces.observe([this] (sstring const& new_value) -> seastar::future<> { update_config<audited_keyspaces_t>(new_value, parse_audit_keyspaces, _audited_keyspaces); return seastar::make_ready_future<>(); }))
+    , _cfg_tables_observer(cfg.audit_tables.observe([this] (sstring const& new_value) -> seastar::future<> { update_config<audited_tables_t>(new_value, parse_audit_tables, _audited_tables); return seastar::make_ready_future<>(); }))
+    , _cfg_categories_observer(cfg.audit_categories.observe([this] (sstring const& new_value) -> seastar::future<> { update_config<category_set>(new_value, parse_audit_categories, _audited_categories); return seastar::make_ready_future<>(); }))
     , _rules_rebuild_action([this] { return rebuild_rules(); })
 {
     _cfg_rules_observer.emplace(cfg.audit_rules.observe(_rules_rebuild_action.make_observer()));

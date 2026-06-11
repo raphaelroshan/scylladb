@@ -122,8 +122,9 @@ public:
                           ? std::nullopt
                           : std::optional<std::string_view>(REPLY_CONTENT_TYPE)),
             _content_type_observer(config.alternator_http_response_disable_content_type_header.observe(
-                [this](const bool& ct) {
+                [this](const bool& ct) -> seastar::future<> {
                     _content_type = ct ? std::nullopt : std::optional<std::string_view>(REPLY_CONTENT_TYPE);
+                    return seastar::make_ready_future<>();
                 })),
             _response_compressor(config), _f_handle(
          [this, _handle](std::unique_ptr<request> req, std::unique_ptr<reply> rep) {
@@ -966,17 +967,19 @@ future<> server::init(net::inet_address addr, std::optional<uint16_t> port, std:
         // before listen() so that no responses are ever sent with stale defaults.
         // Both options drive Seastar's built-in header generation directly.
         const db::config& cfg = _proxy.data_dictionary().get_config();
-        auto apply_server_header = [this] (const sstring& v) {
+        auto apply_server_header = [this] (const sstring& v) -> seastar::future<> {
             auto opt = sanitize_header_value(v, "alternator_http_response_server_header");
             _http_server.set_server_header(opt);
             _https_server.set_server_header(opt);
+            return seastar::make_ready_future<>();
         };
-        auto apply_date_header = [this] (const bool& disable) {
+        auto apply_date_header = [this] (const bool& disable) -> seastar::future<> {
             _http_server.set_generate_date_header(!disable);
             _https_server.set_generate_date_header(!disable);
+            return seastar::make_ready_future<>();
         };
-        apply_server_header(cfg.alternator_http_response_server_header());
-        apply_date_header(cfg.alternator_http_response_disable_date_header());
+        apply_server_header(cfg.alternator_http_response_server_header()).get();
+        apply_date_header(cfg.alternator_http_response_disable_date_header()).get();
         _server_header_observer = cfg.alternator_http_response_server_header.observe(std::move(apply_server_header));
         _date_header_observer = cfg.alternator_http_response_disable_date_header.observe(std::move(apply_date_header));
 

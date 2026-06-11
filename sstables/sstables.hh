@@ -478,11 +478,11 @@ public:
         return _now;
     }
 
-    utils::observer<sstable&> add_on_closed_handler(std::function<void (sstable&)> on_closed_handler) noexcept {
+    utils::observer<sstable&> add_on_closed_handler(std::function<seastar::future<> (sstable&)> on_closed_handler) noexcept {
         return _on_closed.observe(on_closed_handler);
     }
 
-    utils::observer<sstable&> add_on_delete_handler(std::function<void (sstable&)> on_delete_handler) noexcept {
+    utils::observer<sstable&> add_on_delete_handler(std::function<seastar::future<> (sstable&)> on_delete_handler) noexcept {
         return _on_delete.observe(on_delete_handler);
     }
 

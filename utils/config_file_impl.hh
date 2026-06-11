@@ -301,7 +301,7 @@ utils::config_file::named_value<T>::operator utils::updateable_value<T>() const 
 }
 
 template<typename T>
-utils::observer<T> utils::config_file::named_value<T>::observe(std::function<void (const T&)> callback) const {
+utils::observer<T> utils::config_file::named_value<T>::observe(std::function<seastar::future<> (const T&)> callback) const {
     return the_value().observe(std::move(callback));
 }
 

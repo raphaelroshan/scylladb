@@ -1102,7 +1102,7 @@ reader_concurrency_semaphore::reader_concurrency_semaphore(
         register_metrics metrics)
     : _initial_resources(count, memory)
     , _resources(count, memory)
-    , _count_observer(count.observe([this] (const int& new_count) { set_resources({new_count, _initial_resources.memory}); }))
+    , _count_observer(count.observe([this] (const int& new_count) -> future<> { set_resources({new_count, _initial_resources.memory}); return make_ready_future<>(); }))
     , _name(std::move(name))
     , _max_queue_length(max_queue_length)
     , _serialize_limit_multiplier(std::move(serialize_limit_multiplier))

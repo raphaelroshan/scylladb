@@ -3542,9 +3542,9 @@ future<> sstable::close_files() {
         }
     }
 
-    _on_closed(*this);
+    co_await _on_closed(*this);
 
-    return when_all_succeed(close_futures.begin(), close_futures.end()).discard_result().then([this, me = shared_from_this()] {
+    co_await when_all_succeed(close_futures.begin(), close_futures.end()).discard_result().then([this, me = shared_from_this()] {
         if (_open_mode) {
             if (_open_mode.value() == open_flags::ro) {
                 _stats.on_close_for_reading();
@@ -3798,7 +3798,7 @@ sstable::unlink(storage::sync_dir sync) noexcept {
     }
 
     _unlinked_at = db_clock::now();
-    _on_delete(*this);
+    co_await _on_delete(*this);
 
     auto remove_fut = _storage->wipe(*this, sync);
 

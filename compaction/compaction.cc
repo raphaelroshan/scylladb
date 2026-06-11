@@ -404,9 +404,10 @@ private:
     inline void maybe_abort_compaction();
 
     utils::observer<> make_stop_request_observer(utils::observable<>& sro) {
-        return sro.observe([this] () mutable {
+        return sro.observe([this] () mutable -> seastar::future<> {
             SCYLLA_ASSERT(!_unclosed_partition);
             consume_end_of_stream();
+            return seastar::make_ready_future<>();
         });
     }
 
@@ -1339,7 +1340,7 @@ private:
             });
             // Make sure SSTable created by garbage collected writer is made available
             // before exhausted SSTable is released, so to prevent data resurrection.
-            _stop_request_observable();
+            _stop_request_observable().get();
 
             // Added Garbage collected SSTables to list of unused SSTables that will be added
             // to SSTable set. GC SSTables should be added before compaction completes because

@@ -264,11 +264,13 @@ struct vector_store_client::impl {
     impl(utils::config_file::named_value<sstring> primary_uris, utils::config_file::named_value<sstring> secondary_uris,
             utils::config_file::named_value<uint32_t> unreachable_node_detection_time_in_ms,
             utils::config_file::named_value<utils::config_file::string_map> encryption_options, invoke_on_others_func invoke_on_others)
-        : _primary_uri_observer(primary_uris.observe([this](seastar::sstring uris_csv) {
+        : _primary_uri_observer(primary_uris.observe([this](seastar::sstring uris_csv) -> seastar::future<> {
             handle_uris_changed(std::move(uris_csv), _primary_uris, _primary_clients);
+            return seastar::make_ready_future<>();
         }))
-        , _secondary_uri_observer(secondary_uris.observe([this](seastar::sstring uris_csv) {
+        , _secondary_uri_observer(secondary_uris.observe([this](seastar::sstring uris_csv) -> seastar::future<> {
             handle_uris_changed(std::move(uris_csv), _secondary_uris, _secondary_clients);
+            return seastar::make_ready_future<>();
         }))
         , _primary_uris(parse_uris(primary_uris()))
         , _secondary_uris(parse_uris(secondary_uris()))

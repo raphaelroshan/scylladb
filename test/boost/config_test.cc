@@ -33,9 +33,10 @@ SEASTAR_THREAD_TEST_CASE(test_updateable_value_basics) {
     BOOST_REQUIRE_EQUAL(u2.get(), 3);
     BOOST_REQUIRE_EQUAL(u3.get(), 3);
     unsigned called = 0;
-    auto u3observer = u3.observe([&] (int v) {
+    auto u3observer = u3.observe([&] (int v) -> seastar::future<> {
         ++called;
         BOOST_REQUIRE_EQUAL(v, 4);
+        return seastar::make_ready_future<>();
     });
     source.set(4);
     BOOST_REQUIRE_EQUAL(u1.get(), 4);

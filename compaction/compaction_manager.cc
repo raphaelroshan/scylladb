@@ -1039,9 +1039,10 @@ compaction_manager::compaction_manager(config cfg, abort_source& as, tasks::task
     }))
     , _update_compaction_static_shares_action([this] { return update_static_shares(static_shares()); })
     , _compaction_static_shares_observer(_cfg.static_shares.observe(_update_compaction_static_shares_action.make_observer()))
-    , _compaction_max_shares_observer(_cfg.max_shares.observe([this] (const float& max_shares) {
+    , _compaction_max_shares_observer(_cfg.max_shares.observe([this] (const float& max_shares) -> future<> {
         cmlog.info("Updating max shares to {}", max_shares);
         _compaction_controller.set_max_shares(max_shares);
+        return make_ready_future<>();
     }))
     , _strategy_control(std::make_unique<strategy_control>(*this))
 {
@@ -1058,7 +1059,7 @@ compaction_manager::compaction_manager(tasks::task_manager& tm)
     , _backlog_manager(_compaction_controller)
     , _update_compaction_static_shares_action([] { return make_ready_future<>(); })
     , _compaction_static_shares_observer(_cfg.static_shares.observe(_update_compaction_static_shares_action.make_observer()))
-    , _compaction_max_shares_observer(_cfg.max_shares.observe([] (const float& max_shares) {}))
+    , _compaction_max_shares_observer(_cfg.max_shares.observe([] (const float& max_shares) -> future<> { return make_ready_future<>(); }))
     , _strategy_control(std::make_unique<strategy_control>(*this))
 {
     tm.register_module(_task_manager_module->get_name(), _task_manager_module);

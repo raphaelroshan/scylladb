@@ -1597,8 +1597,8 @@ future<> storage_service::join_topology(sharded<service::storage_proxy>& proxy,
         app_states.emplace(s.first, std::move(s.second));
     }
 
-    auto schema_change_announce = _db.local().observable_schema_version().observe([this] (table_schema_version schema_version) mutable {
-        _migration_manager.local().passive_announce(std::move(schema_version));
+    auto schema_change_announce = _db.local().observable_schema_version().observe([this] (table_schema_version schema_version) mutable -> future<> {
+        return _migration_manager.local().passive_announce(std::move(schema_version));
     });
 
     _listeners.emplace_back(make_lw_shared(std::move(schema_change_announce)));

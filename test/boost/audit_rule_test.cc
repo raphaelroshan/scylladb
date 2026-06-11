@@ -144,8 +144,9 @@ BOOST_AUTO_TEST_CASE(test_config_audit_rules_cql) {
     db::config cfg;
 
     std::vector<audit::audit_rule> observed;
-    auto observer = cfg.audit_rules.observe([&observed] (const std::vector<audit::audit_rule>& rules) {
+    auto observer = cfg.audit_rules.observe([&observed] (const std::vector<audit::audit_rule>& rules) -> seastar::future<> {
         observed = rules;
+        return seastar::make_ready_future<>();
     });
     BOOST_CHECK(cfg.audit_rules.set_value(
         R"([{"sinks":["syslog"],"categories":["AUTH"],"qualified_table_names":[],"roles":["*"]}])",

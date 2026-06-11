@@ -249,8 +249,9 @@ std::unique_ptr<advanced_rpc_compressor> advanced_rpc_compressor::tracker::negot
 
 advanced_rpc_compressor::tracker::tracker(config cfg)
     : _cfg(cfg)
-    , _algo_config_observer(_cfg.algo_config.observe([this] (const auto& x) {
+    , _algo_config_observer(_cfg.algo_config.observe([this] (const auto& x) -> seastar::future<> {
         set_supported_algos(algo_list_to_set(x));
+        return seastar::make_ready_future<>();
     }))
 {
     if (_cfg.register_metrics) {

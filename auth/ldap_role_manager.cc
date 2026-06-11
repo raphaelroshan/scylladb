@@ -231,7 +231,7 @@ ldap_role_manager::ldap_role_manager(cql3::query_processor& qp, ::service::raft_
             cfg.ldap_bind_dn,
             cfg.ldap_bind_passwd,
             cfg.permissions_update_interval_in_ms(),
-            cfg.permissions_update_interval_in_ms.observe([this] (const uint32_t& v) { _permissions_update_interval_in_ms = v; }),
+            cfg.permissions_update_interval_in_ms.observe([this] (const uint32_t& v) -> seastar::future<> { _permissions_update_interval_in_ms = v; return seastar::make_ready_future<>(); }),
             qp,
             rg0c,
             mm,

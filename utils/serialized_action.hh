@@ -121,8 +121,8 @@ public:
 
     public:
         template <typename... Args>
-        void operator()(Args&&...) {
-            (void)_action.trigger().handle_exception_type([] (const seastar::broken_semaphore&) {
+        seastar::future<> operator()(Args&&...) {
+            return _action.trigger().handle_exception_type([] (const seastar::broken_semaphore&) {
                 // Avoid an ignored exceptional future warning for notifications after join() starts.
             });
         };

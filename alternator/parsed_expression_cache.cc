@@ -80,8 +80,9 @@ struct expression_cache_impl {
 
 expression_cache_impl::expression_cache_impl(expression_cache::config cfg, stats& stats) : 
     _stats(stats), _cached_entries(logger_, _stats.expression_cache.evictions),
-    _max_cache_entries_observer(cfg.max_cache_entries.observe([this] (uint32_t max_value) {
+    _max_cache_entries_observer(cfg.max_cache_entries.observe([this] (uint32_t max_value) -> seastar::future<> {
         _cached_entries.set_max_size(max_value);
+        return seastar::make_ready_future<>();
     })) {
     _cached_entries.set_max_size(cfg.max_cache_entries());
 }

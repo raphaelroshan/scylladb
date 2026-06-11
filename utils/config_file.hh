@@ -201,7 +201,7 @@ public:
 
         operator updateable_value<T>() const &;
 
-        observer<T> observe(std::function<void (const T&)> callback) const;
+        observer<T> observe(std::function<seastar::future<> (const T&)> callback) const;
 
         void add_command_line_option(bpo::options_description_easy_init&) override;
         void set_value(const YAML::Node&, config_source) override;

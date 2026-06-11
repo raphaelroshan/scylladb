@@ -144,8 +144,8 @@ std::vector<sstring> storage_manager::endpoints(sstring type) const noexcept {
 }
 
 storage_manager::config_updater_sync::config_updater_sync(const db::config& cfg, storage_manager& sstm)
-    : observer(cfg.object_storage_endpoints.observe([&sstm, &cfg] (const std::vector<db::object_storage_endpoint_param>&) {
-        // Sync part: runs atomically in the current reactor turn 
+    : observer(cfg.object_storage_endpoints.observe([&sstm, &cfg] (const std::vector<db::object_storage_endpoint_param>&) -> seastar::future<> {
+        // Sync part: runs atomically in the current reactor turn
         // Update _object_storage_endpoints so that any subsequent call to
         // get_endpoint_client() immediately sees the new configuration.
         // Each client's update_config_sync() spawns its own async background
@@ -167,11 +167,12 @@ storage_manager::config_updater_sync::config_updater_sync(const db::config& cfg,
         std::erase_if(sstm._object_storage_endpoints, [&updates](const auto& e) {
             return !updates.contains(e.first);
         });
+        return seastar::make_ready_future<>();
     }))
 {}
 
 storage_manager::connections_updater_sync::connections_updater_sync(const db::config& cfg, storage_manager& sstm)
-    : observer(cfg.object_storage_connections_per_shard.observe([&sstm] (unsigned new_value) {
+    : observer(cfg.object_storage_connections_per_shard.observe([&sstm] (unsigned new_value) -> seastar::future<> {
         smlogger.info("connections_updater: updating connections_per_shard to {}", new_value);
         sstm._connections_per_shard = new_value;
         for (auto& [endpoint, ep] : sstm._object_storage_endpoints) {
@@ -179,6 +180,7 @@ storage_manager::connections_updater_sync::connections_updater_sync(const db::co
                 ep.client->update_connections_per_shard(new_value);
             }
         }
+        return seastar::make_ready_future<>();
     }))
 {}
 
@@ -299,9 +301,10 @@ size_t sstables_manager::get_memory_available_for_reclaimable_components() const
 }
 
 future<> sstables_manager::components_reclaim_reload_fiber() {
-    auto components_memory_reclaim_threshold_observer = _config.memory_reclaim_threshold.observe([&] (double) {
+    auto components_memory_reclaim_threshold_observer = _config.memory_reclaim_threshold.observe([&] (double) -> seastar::future<> {
         // any change to the components_memory_reclaim_threshold config should trigger reload/reclaim
         _components_memory_change_event.signal();
+        return seastar::make_ready_future<>();
     });
 
     co_await coroutine::switch_to(_maintenance_sg);

@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <seastar/core/future.hh>
+#include <seastar/core/coroutine.hh>
 #include <seastar/util/noncopyable_function.hh>
 #include <vector>
 #include <algorithm>
@@ -44,7 +46,7 @@ public:
     class observer {
         friend class observable;
         observable* _observable;
-        seastar::noncopyable_function<void (Args...)> _callback;
+        seastar::noncopyable_function<seastar::future<> (Args...)> _callback;
     private:
         void moved(observer* from) {
             if (_observable) {
@@ -52,7 +54,7 @@ public:
             }
         }
     public:
-        observer(observable* o, seastar::noncopyable_function<void (Args...)> callback) noexcept
+        observer(observable* o, seastar::noncopyable_function<seastar::future<> (Args...)> callback) noexcept
                 : _observable(o), _callback(std::move(callback)) {
         }
         observer(observer&& o) noexcept
@@ -111,12 +113,13 @@ public:
     ~observable() {
         update_observers(nullptr);
     }
-    // Send args to all connected observers
-    void operator()(Args... args) const {
+    // Send args to all connected observers and return a future
+    // that completes when all observer callbacks have completed.
+    seastar::future<> operator()(Args... args) const {
         std::exception_ptr e;
         for (auto&& ob : _observers) {
             try {
-                ob->_callback(args...);
+                co_await ob->_callback(args...);
             } catch (...) {
                 if (!e) {
                     e = std::current_exception();
@@ -128,7 +131,7 @@ public:
         }
     }
     // Adds an observer to an observable
-    observer observe(std::function<void (Args...)> callback) {
+    observer observe(std::function<seastar::future<> (Args...)> callback) {
         observer ob(this, std::move(callback));
         _observers.push_back(&ob);
         return ob;
@@ -142,7 +145,7 @@ using observer = typename observable<Args...>::observer;
 
 template <typename... Args>
 inline observer<Args...> dummy_observer() {
-    return observer<Args...>(nullptr, seastar::noncopyable_function<void(Args...)>());
+    return observer<Args...>(nullptr, seastar::noncopyable_function<seastar::future<>(Args...)>());
 }
 
 }

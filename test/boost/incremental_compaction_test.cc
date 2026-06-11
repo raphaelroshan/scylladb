@@ -129,9 +129,10 @@ SEASTAR_TEST_CASE(incremental_compaction_test) {
 
             do_replace(old_sstables, new_sstables);
 
-            observers.push_back(old_sstable->add_on_closed_handler([&] (sstable& sst) {
+            observers.push_back(old_sstable->add_on_closed_handler([&] (sstable& sst) -> seastar::future<> {
                 BOOST_TEST_MESSAGE(fmt::format("Closing sstable of generation {}", sst.generation()));
                 closed_sstables_tracker++;
+                return seastar::make_ready_future<>();
             }));
 
             BOOST_TEST_MESSAGE(fmt::format("Removing sstable of generation {}, refcnt: {}", old_sstables.front()->generation(), old_sstables.front().use_count()));

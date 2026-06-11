@@ -48,12 +48,14 @@ public:
     response_compressor(const db::config& cfg)
         : cfg(cfg)
         ,_gzip_level_observer(
-            cfg.alternator_response_gzip_compression_level.observe([this](int v) {
+            cfg.alternator_response_gzip_compression_level.observe([this](int v) -> seastar::future<> {
                     update_threshold();
+                    return seastar::make_ready_future<>();
                 }))
         ,_gzip_threshold_observer(
-            cfg.alternator_response_compression_threshold_in_bytes.observe([this](uint32_t v) {
+            cfg.alternator_response_compression_threshold_in_bytes.observe([this](uint32_t v) -> seastar::future<> {
                     update_threshold();
+                    return seastar::make_ready_future<>();
                 }))
     {
         update_threshold();

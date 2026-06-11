@@ -1577,10 +1577,19 @@ private:
         compaction_type_options::scrub::drop_unfixable_sstables _drop_unfixable_sstables;
 
     private:
+        sstring current_partition_key_description() const {
+            const auto& dk = _validator.previous_partition_key();
+            if (dk.key().is_empty()) {
+                return "";
+            }
+            return format(", partition key: {}", dk.key().with_schema(*_schema));
+        }
+
         void maybe_abort_scrub(std::function<void()> report_error) {
             if (_scrub_mode == compaction_type_options::scrub::mode::abort) {
                 report_error();
-                throw compaction_aborted_exception(_schema->ks_name(), _schema->cf_name(), "scrub compaction found invalid data");
+                throw compaction_aborted_exception(_schema->ks_name(), _schema->cf_name(),
+                        format("scrub compaction found invalid data{}", current_partition_key_description()));
             }
             ++_validation_errors;
         }
@@ -1602,7 +1611,8 @@ private:
                 throw compaction_aborted_exception(
                         _schema->ks_name(),
                         _schema->cf_name(),
-                        "scrub compaction failed to rectify unexpected partition-start, validator rejects the injected partition-end");
+                        format("scrub compaction failed to rectify unexpected partition-start, validator rejects the injected partition-end{}",
+                                current_partition_key_description()));
             }
             push_mutation_fragment(std::move(pe));
 
@@ -1615,7 +1625,8 @@ private:
                 throw compaction_aborted_exception(
                         _schema->ks_name(),
                         _schema->cf_name(),
-                        "scrub compaction failed to rectify unexpected partition-start, validator rejects it even after the injected partition-end");
+                        format("scrub compaction failed to rectify unexpected partition-start, validator rejects it even after the injected partition-end{}",
+                                current_partition_key_description()));
             }
             return skip::no;
         }
@@ -1653,7 +1664,8 @@ private:
                 throw compaction_aborted_exception(
                         _schema->ks_name(),
                         _schema->cf_name(),
-                        "scrub compaction cannot handle invalid fragments with an active range tombstone change");
+                        format("scrub compaction cannot handle invalid fragments with an active range tombstone change{}",
+                                current_partition_key_description()));
             }
 
             // If the unexpected fragment is a partition end, we just drop it.
@@ -1695,7 +1707,8 @@ private:
                 throw compaction_aborted_exception(
                         _schema->ks_name(),
                         _schema->cf_name(),
-                        format("scrub compaction failed due to unrecoverable error: {}", e));
+                        format("scrub compaction failed due to unrecoverable error: {}{}",
+                                e, current_partition_key_description()));
             }
             if (_drop_unfixable_sstables) {
                 _failed_to_fix_sstable = true;
@@ -1813,7 +1826,8 @@ private:
                     throw compaction_aborted_exception(
                             _schema->ks_name(),
                             _schema->cf_name(),
-                            format("scrub compaction failed due to unrecoverable error: {}", std::current_exception()));
+                            format("scrub compaction failed due to unrecoverable error: {}{}",
+                                    std::current_exception(), current_partition_key_description()));
                 }
             });
         }
